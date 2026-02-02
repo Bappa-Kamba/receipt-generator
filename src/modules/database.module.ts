@@ -11,18 +11,37 @@ import { Receipt } from '../entities/receipt.entity';
   imports: [
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('database.host'),
-        port: configService.get('database.port'),
-        username: configService.get('database.username'),
-        password: configService.get('database.password'),
-        database: configService.get('database.database'),
-        entities: [User, Customer, Order, OrderItem, Receipt],
-        migrations: configService.get('database.migrations'),
-        synchronize: configService.get('database.synchronize'),
-        logging: configService.get('database.logging'),
-      }),
+      useFactory: (configService: ConfigService) => {
+        const databaseConfig = configService.get('database');
+        
+        // If URL is provided, use it directly
+        if (databaseConfig.url) {
+          return {
+            type: 'postgres',
+            url: databaseConfig.url,
+            entities: [User, Customer, Order, OrderItem, Receipt],
+            migrations: databaseConfig.migrations,
+            synchronize: databaseConfig.synchronize,
+            logging: databaseConfig.logging,
+            ssl: databaseConfig.ssl,
+          };
+        }
+
+        // Otherwise, use individual connection parameters
+        return {
+          type: 'postgres',
+          host: databaseConfig.host,
+          port: databaseConfig.port,
+          username: databaseConfig.username,
+          password: databaseConfig.password,
+          database: databaseConfig.database,
+          entities: [User, Customer, Order, OrderItem, Receipt],
+          migrations: databaseConfig.migrations,
+          synchronize: databaseConfig.synchronize,
+          logging: databaseConfig.logging,
+          ssl: databaseConfig.ssl,
+        };
+      },
       inject: [ConfigService],
     }),
     TypeOrmModule.forFeature([User, Customer, Order, OrderItem, Receipt]),
