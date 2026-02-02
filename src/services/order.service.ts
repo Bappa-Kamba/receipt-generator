@@ -12,7 +12,7 @@ import { OrderItem } from '../entities/order-item.entity';
 import { User, UserRole } from '../entities/user.entity';
 import { ReceiptDto, CreateOrderDto, OrderResponseDto } from '../dtos';
 import { StorageService } from './storage.service';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { format } from 'date-fns';
 
 @Injectable()
 export class OrderService {
