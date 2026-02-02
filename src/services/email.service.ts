@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Resend } from 'resend';
+import * as nodemailer from 'nodemailer';
 
 export interface SendReceiptEmailParams {
   to: string;
@@ -14,15 +14,25 @@ export interface SendReceiptEmailParams {
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private resend: Resend;
+  private transporter: nodemailer.Transporter;
   private fromEmail: string;
   private fromName: string;
 
   constructor(private configService: ConfigService) {
-    const apiKey = this.configService.get<string>('email.apiKey') || '';
-    this.resend = new Resend(apiKey);
+    const user = this.configService.get<string>('email.user');
+    const password = this.configService.get<string>('email.password');
+
+    this.transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: user,
+        pass: password,
+      },
+    });
+
     this.fromEmail =
       this.configService.get<string>('email.fromEmail') ||
+      user ||
       'support@kamtechstore.com';
     this.fromName =
       this.configService.get<string>('email.fromName') || 'KamTech Store';
@@ -32,9 +42,9 @@ export class EmailService {
     const { to, customerName, orderId, receiptId, total, pdfBuffer } = params;
 
     try {
-      await this.resend.emails.send({
+      await this.transporter.sendMail({
         from: `${this.fromName} <${this.fromEmail}>`,
-        to: [to],
+        to: to,
         subject: `Your Receipt for Order ${orderId}`,
         html: this.generateEmailTemplate(
           customerName,
