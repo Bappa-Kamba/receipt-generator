@@ -34,7 +34,7 @@ export class ReceiptService {
       }
     }
 
-    return this.mapToDto(receipt);
+    return await this.mapToDto(receipt);
   }
 
   async getReceiptWithOrder(receiptId: string): Promise<Receipt | null> {
@@ -66,30 +66,29 @@ export class ReceiptService {
       .take(limit)
       .getManyAndCount();
 
+    const receiptDtos = await Promise.all(
+      receipts.map((receipt) => this.mapToDto(receipt)),
+    );
+
     return {
-      receipts: receipts.map((receipt) => this.mapToDto(receipt)),
+      receipts: receiptDtos,
       total,
       page,
       limit,
     };
   }
 
-  private mapToDto(receipt: Receipt): ReceiptDto {
-    let cloudinaryUrl = receipt.cloudinaryUrl;
+  async mapToDto(receipt: Receipt): Promise<ReceiptDto> {
+    let storageUrl = receipt.storageUrl;
 
-    if (cloudinaryUrl) {
-      const publicId = cloudinaryUrl
-        .split('/')
-        .slice(-2)
-        .join('/')
-        .split('.')[0];
-      cloudinaryUrl = this.storageService.generateSignedUrl(publicId);
+    if (storageUrl) {
+      storageUrl = await this.storageService.generateSignedUrl(storageUrl);
     }
 
     return {
       receiptId: receipt.receiptId,
       orderId: receipt.order?.orderId || '',
-      cloudinaryUrl,
+      storageUrl,
       emailSentAt: receipt.emailSentAt,
       generatedAt: receipt.generatedAt,
     };

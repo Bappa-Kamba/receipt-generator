@@ -1,7 +1,7 @@
 export interface ReceiptDto {
   receiptId: string;
   orderId: string;
-  cloudinaryUrl: string | null;
+  storageUrl: string | null;
   emailSentAt: Date | null;
   generatedAt: Date;
 }

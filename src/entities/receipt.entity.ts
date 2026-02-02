@@ -21,7 +21,7 @@ export class Receipt {
   orderId: string;
 
   @Column({ nullable: true })
-  cloudinaryUrl: string;
+  storageUrl: string;
 
   @Column({ type: 'timestamp', nullable: true })
   emailSentAt: Date;

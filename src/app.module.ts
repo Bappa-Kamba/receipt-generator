@@ -10,7 +10,7 @@ import { AuthModule } from './modules/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import {
   databaseConfig,
-  cloudinaryConfig,
+  storageConfig,
   emailConfig,
   redisConfig,
   jwtConfig,
@@ -22,7 +22,7 @@ import {
       isGlobal: true,
       load: [
         databaseConfig,
-        cloudinaryConfig,
+        storageConfig,
         emailConfig,
         redisConfig,
         jwtConfig,

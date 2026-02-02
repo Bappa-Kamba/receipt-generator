@@ -14,11 +14,11 @@ export class ReceiptResponseDto {
   orderId: string;
 
   @ApiProperty({
-    description: 'Cloudinary URL for the receipt PDF',
-    example: 'https://res.cloudinary.com/demo/image/upload/v1234567890/receipts/receipt.pdf',
+    description: 'Signed URL for the receipt PDF (stored in Supabase Storage for instance)',
+    example: 'https://your-project.storage.supabase.com/receipts/receipt.pdf?...',
     nullable: true,
   })
-  cloudinaryUrl: string | null;
+  storageUrl: string | null;
 
   @ApiProperty({
     description: 'Timestamp when email was sent',

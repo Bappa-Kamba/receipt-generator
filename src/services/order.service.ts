@@ -13,6 +13,7 @@ import { User, UserRole } from '../entities/user.entity';
 import { ReceiptDto, CreateOrderDto, OrderResponseDto } from '../dtos';
 import { StorageService } from './storage.service';
 import { format } from 'date-fns';
+import { ReceiptService } from './receipt.service';
 
 @Injectable()
 export class OrderService {
@@ -26,6 +27,7 @@ export class OrderService {
     @InjectRepository(OrderItem)
     private orderItemRepository: Repository<OrderItem>,
     private storageService: StorageService,
+    private receiptService: ReceiptService,
   ) {}
 
   async createOrder(dto: CreateOrderDto): Promise<OrderResponseDto> {
@@ -105,7 +107,7 @@ export class OrderService {
       throw new NotFoundException(`Receipt for order ${orderId} not found`);
     }
 
-    return this.mapToDto(receipt);
+    return await this.receiptService.mapToDto(receipt);
   }
 
   async getOrder(orderId: string, user: User): Promise<OrderResponseDto> {
@@ -177,27 +179,6 @@ export class OrderService {
       })),
       orderDate: order.orderDate,
       createdAt: order.createdAt,
-    };
-  }
-
-  private mapToDto(receipt: Receipt): ReceiptDto {
-    let cloudinaryUrl = receipt.cloudinaryUrl;
-
-    if (cloudinaryUrl) {
-      const publicId = cloudinaryUrl
-        .split('/')
-        .slice(-2)
-        .join('/')
-        .split('.')[0];
-      cloudinaryUrl = this.storageService.generateSignedUrl(publicId);
-    }
-
-    return {
-      receiptId: receipt.receiptId,
-      orderId: receipt.order?.orderId || '',
-      cloudinaryUrl,
-      emailSentAt: receipt.emailSentAt,
-      generatedAt: receipt.generatedAt,
     };
   }
 }

@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from '../entities/order.entity';
 import { Receipt } from '../entities/receipt.entity';
-import { PdfService, EmailService, StorageService } from '../services';
+import { PdfService, EmailService, StorageService, UploadResult } from '../services';
 import { promises as fs } from 'fs';
 import { format } from 'date-fns';
 
@@ -51,28 +51,38 @@ export class ReceiptProcessor {
         receiptId,
       );
       pdfPath = filePath;
+      let storageResult: UploadResult | undefined;
 
-      this.logger.log(`Uploading PDF to Cloudinary`);
-      // const uploadResult = await this.storageService.uploadPdf(
-      //   filePath,
-      //   receiptId,
-      // );
+      try {
+        this.logger.log(`Uploading PDF to storage`);
+        storageResult = await this.storageService.uploadPdf(
+          filePath,
+          receiptId,
+        );
+      } catch (error) {
+        this.logger.error(`Failed to upload PDF to storage: ${error.message}`);
+        throw error;
+      }
 
-      this.logger.log(`Sending receipt email to ${order.customer.email}`);
-      const emailResult = await this.emailService.sendReceiptEmail({
-        to: order.customer.email,
-        customerName: order.customer.name,
-        orderId: order.orderId,
-        receiptId,
-        total: Number(order.total),
-        pdfBuffer: buffer,
-      });
-      this.logger.log(`Email sent successfully: ${emailResult}`);
+      try {
+        this.logger.log(`Sending receipt email to ${order.customer.email}`);
+        await this.emailService.sendReceiptEmail({
+          to: order.customer.email,
+          customerName: order.customer.name,
+          orderId: order.orderId,
+          receiptId,
+          total: Number(order.total),
+          pdfBuffer: buffer,
+        });
+      } catch (error) {
+        this.logger.error(`Failed to send receipt email: ${error.message}`);
+        throw error;
+      }
 
       const receipt = this.receiptRepository.create({
         receiptId,
         orderId: order.id,
-        cloudinaryUrl: '',
+        storageUrl: storageResult?.key,
         emailSentAt: new Date(),
         generatedAt: new Date(),
       });
@@ -80,7 +90,7 @@ export class ReceiptProcessor {
       await this.receiptRepository.save(receipt);
       this.logger.log(`Receipt ${receiptId} saved to database`);
 
-      // await this.cleanupFile(pdfPath);
+      this.cleanupFile(pdfPath);
 
       this.logger.log(
         `Receipt generation completed successfully for order ${order.orderId}`,
