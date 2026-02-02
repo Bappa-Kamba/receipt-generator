@@ -4,7 +4,7 @@ import { config } from 'dotenv';
 config();
 
 // Support Supabase connection URI
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DB_URL;
 
 const dataSourceConfig = databaseUrl
   ? {
