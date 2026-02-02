@@ -9,9 +9,8 @@ import {
   OneToOne,
   JoinColumn,
 } from 'typeorm';
-import { User } from './user.entity';
+import { Customer } from './customer.entity';
 import { OrderItem } from './order-item.entity';
-import { Payment } from './payment.entity';
 import { Receipt } from './receipt.entity';
 
 export enum PaymentMethod {
@@ -23,6 +22,7 @@ export enum PaymentMethod {
 
 export enum OrderStatus {
   PENDING = 'pending',
+  CONFIRMED = 'confirmed',
   PROCESSING = 'processing',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
@@ -37,7 +37,7 @@ export class Order {
   orderId: string;
 
   @Column('uuid')
-  userId: string;
+  customerId: string;
 
   @Column('decimal', { precision: 10, scale: 2 })
   subtotal: number;
@@ -45,7 +45,7 @@ export class Order {
   @Column('decimal', { precision: 10, scale: 2 })
   tax: number;
 
-  @Column('decimal', { precision: 10, scale: 2 })
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
   discount: number;
 
   @Column('decimal', { precision: 10, scale: 2 })
@@ -60,7 +60,7 @@ export class Order {
   @Column({
     type: 'enum',
     enum: OrderStatus,
-    default: OrderStatus.PENDING,
+    default: OrderStatus.CONFIRMED,
   })
   status: OrderStatus;
 
@@ -73,17 +73,14 @@ export class Order {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @ManyToOne(() => User, (user) => user.orders)
-  @JoinColumn({ name: 'userId' })
-  user: User;
+  @ManyToOne(() => Customer, (customer) => customer.orders, { eager: true })
+  @JoinColumn({ name: 'customerId' })
+  customer: Customer;
 
   @OneToMany(() => OrderItem, (orderItem) => orderItem.order, {
     cascade: true,
   })
   orderItems: OrderItem[];
-
-  @OneToOne(() => Payment, (payment) => payment.order)
-  payment: Payment;
 
   @OneToOne(() => Receipt, (receipt) => receipt.order)
   receipt: Receipt;

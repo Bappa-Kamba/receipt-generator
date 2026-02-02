@@ -4,9 +4,8 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToMany,
 } from 'typeorm';
-import { Order } from './order.entity';
+import * as bcrypt from 'bcrypt';
 
 export enum UserRole {
   CUSTOMER = 'customer',
@@ -24,7 +23,7 @@ export class User {
   @Column()
   name: string;
 
-  @Column({ nullable: true })
+  @Column()
   password: string;
 
   @Column({
@@ -40,6 +39,7 @@ export class User {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @OneToMany(() => Order, (order) => order.user)
-  orders: Order[];
+  async validatePassword(password: string): Promise<boolean> {
+    return bcrypt.compare(password, this.password);
+  }
 }
