@@ -20,13 +20,12 @@ import {
   OrderService,
 } from '../services';
 import { ReceiptProcessor } from '../processors/receipt.processor';
+import { QueueModule } from './queue.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, Receipt, Customer, User, OrderItem]),
-    BullModule.registerQueue({
-      name: 'receipt-generation',
-    }),
+    QueueModule
   ],
   controllers: [WebhookController, ReceiptController, OrderController],
   providers: [
