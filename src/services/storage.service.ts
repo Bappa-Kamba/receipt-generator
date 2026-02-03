@@ -20,7 +20,7 @@ export class StorageService {
     const secretAccessKey = this.configService.get<string>('storage.secretAccessKey');
     const region = this.configService.get<string>('storage.region');
     const endpoint = this.configService.get<string>('storage.endpoint');
-    this.bucket = this.configService.get<string>('storage.bucket') || '';
+    this.bucket = this.configService.getOrThrow('storage.bucket');
 
     if (!accessKeyId || !secretAccessKey || !this.bucket) {
       throw new Error('Missing required storage configuration. Please set SUPABASE_STORAGE_ACCESS_KEY_ID, SUPABASE_STORAGE_SECRET_ACCESS_KEY, and SUPABASE_STORAGE_BUCKET environment variables.');
