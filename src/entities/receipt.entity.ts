@@ -27,9 +27,6 @@ export class Receipt {
   orderId: string;
 
   @Column({ nullable: true })
-  storageUrl: string;
-
-  @Column({ nullable: true })
   storageKey: string;
 
   @Column({ type: 'enum', enum: ReceiptStatus, default: ReceiptStatus.PENDING })

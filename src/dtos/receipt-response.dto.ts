@@ -14,11 +14,11 @@ export class ReceiptResponseDto {
   orderId: string;
 
   @ApiProperty({
-    description: 'Signed URL for the receipt PDF (stored in Supabase Storage for instance)',
-    example: 'https://your-project.storage.supabase.com/receipts/receipt.pdf?...',
+    description: 'The storage key for the receipt PDF (stored in Supabase Storage)',
+    example: 'receipt/RCP-20260208-212121',
     nullable: true,
   })
-  storageUrl: string | null;
+  storageKey: string | null;
 
   @ApiProperty({
     description: 'Timestamp when email was sent',
