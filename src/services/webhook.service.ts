@@ -75,7 +75,7 @@ export class WebhookService {
             'send-receipt-email',
             `receipt-email:${existingReceipt.receiptId}`,
             { receiptId: existingReceipt.receiptId, orderId },
-            { attempts: 5, backoff: { type: 'exponential', delay: 10_000 } },
+            { attempts: 5, backoff: { type: 'exponential', delay: 10_000 }, removeOnComplete: true },
           );
 
           return {
