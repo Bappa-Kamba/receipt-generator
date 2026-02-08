@@ -2,12 +2,15 @@ import { Processor, Process } from '@nestjs/bull';
 import type { Job } from 'bull';
 import { Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from 'bull';
 import { Repository } from 'typeorm';
 import { Order } from '../entities/order.entity';
-import { Receipt } from '../entities/receipt.entity';
-import { PdfService, EmailService, StorageService, UploadResult } from '../services';
+import { Receipt, ReceiptStatus } from '../entities/receipt.entity';
+import { PdfService, StorageService } from '../services';
 import { promises as fs } from 'fs';
 import { format } from 'date-fns';
+import { ensureJob } from '../common/utils.queue';
 
 interface ReceiptJobData {
   orderId: string;
@@ -22,8 +25,9 @@ export class ReceiptProcessor {
     private orderRepository: Repository<Order>,
     @InjectRepository(Receipt)
     private receiptRepository: Repository<Receipt>,
+    @InjectQueue('receipt-email')
+    private emailQueue: Queue,
     private pdfService: PdfService,
-    private emailService: EmailService,
     private storageService: StorageService,
   ) {}
 
@@ -31,81 +35,79 @@ export class ReceiptProcessor {
   async handleReceiptGeneration(job: Job<ReceiptJobData>) {
     const { orderId } = job.data;
     this.logger.log(`Processing receipt generation for order ${orderId}`);
+
     let pdfPath: string | undefined;
 
-    try {
-      const order = await this.orderRepository.findOne({
-        where: { orderId },
-        relations: ['customer', 'orderItems'],
-      });
+    const order = await this.orderRepository.findOne({
+      where: { orderId },
+      relations: ['customer', 'orderItems'],
+    });
+    if (!order) throw new NotFoundException(`Order ${orderId} not found`);
 
-      if (!order) {
-        throw new NotFoundException(`Order ${orderId} not found`);
-      }
+    let receipt = await this.receiptRepository.findOne({ where: { orderId: order.id } });
 
+    if (!receipt) {
       const receiptId = this.generateReceiptId();
-
-      this.logger.log(`Generating PDF for receipt ${receiptId}`);
-      const { filePath, buffer } = await this.pdfService.generateReceiptPdf(
-        order,
-        receiptId,
-      );
-      pdfPath = filePath;
-      let storageResult: UploadResult | undefined;
-
       try {
-        this.logger.log(`Uploading PDF to storage`);
-        storageResult = await this.storageService.uploadPdf(
-          filePath,
+        receipt = this.receiptRepository.create({
           receiptId,
-        );
-      } catch (error) {
-        this.logger.error(`Failed to upload PDF to storage: ${error.message}`);
-        throw error;
-      }
-
-      try {
-        this.logger.log(`Sending receipt email to ${order.customer.email}`);
-        await this.emailService.sendReceiptEmail({
-          to: order.customer.email,
-          customerName: order.customer.name,
-          orderId: order.orderId,
-          receiptId,
-          total: Number(order.total),
-          pdfBuffer: buffer,
+          orderId: order.id,
+          status: ReceiptStatus.PENDING,
+          generatedAt: new Date(),
         });
-      } catch (error) {
-        this.logger.error(`Failed to send receipt email: ${error.message}`);
-        throw error;
+        receipt = await this.receiptRepository.save(receipt);
+        this.logger.log(`Receipt record created: ${receipt.receiptId}`);
+      } catch (e: any) {
+        receipt = await this.receiptRepository.findOne({ where: { orderId: order.id } });
+        if (!receipt) throw e;
+      }
+    }
+
+    if (receipt.emailSentAt) {
+      this.logger.log(`Receipt ${receipt.receiptId} already completed (email sent). Skipping.`);
+      return { success: true, receiptId: receipt.receiptId, skipped: true };
+    }
+
+    try {
+      if (!receipt.storageKey) {
+        const { filePath } = await this.pdfService.generateReceiptPdf(order, receipt.receiptId);
+        pdfPath = filePath;
+
+        const objectKey = `receipts/${receipt.receiptId}.pdf`;
+        await this.storageService.uploadPdf(filePath, objectKey);
+
+        receipt.storageKey = objectKey;
+        receipt.status = ReceiptStatus.PDF_UPLOADED;
+        await this.receiptRepository.save(receipt);
       }
 
-      const receipt = this.receiptRepository.create({
-        receiptId,
-        orderId: order.id,
-        storageUrl: storageResult?.key,
-        emailSentAt: new Date(),
-        generatedAt: new Date(),
-      });
+      await ensureJob(
+        this.emailQueue,
+        'send-receipt-email',
+        `receipt-email:${receipt.receiptId}`,
+        {
+          receiptId: receipt.receiptId,
+          orderId: order.orderId,
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 10000
+          },
+          removeOnComplete: true
+        });
 
+      this.logger.log(`Queued email job for receipt ${receipt.receiptId}`);
+
+      return { success: true, receiptId: receipt.receiptId };
+    } catch (err: any) {
+      receipt.status = ReceiptStatus.FAILED;
+      receipt.lastError = err?.message ?? String(err);
       await this.receiptRepository.save(receipt);
-      this.logger.log(`Receipt ${receiptId} saved to database`);
-
-      this.cleanupFile(pdfPath);
-
-      this.logger.log(
-        `Receipt generation completed successfully for order ${order.orderId}`,
-      );
-      return { success: true, receiptId };
-    } catch (error) {
-      this.logger.error(
-        `An unexpected error occurred while generating receipt for order ${orderId}\n${error.stack}`,
-      );
-
-      if (pdfPath) {
-        await this.cleanupFile(pdfPath);
-      }
-
-      throw error;
+      throw err;
+    } finally {
+      if (pdfPath) await this.cleanupFile(pdfPath);
     }
   }
 

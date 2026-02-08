@@ -19,22 +19,23 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<AuthResponseDto> {
+  async register(authDto: RegisterDto): Promise<AuthResponseDto> {
+    const { email, name, role, password } = authDto;
     const existingUser = await this.userRepository.findOne({
-      where: { email: dto.email },
+      where: { email: email },
     });
 
     if (existingUser) {
       throw new ConflictException('User with this email already exists');
     }
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = this.userRepository.create({
-      email: dto.email,
-      name: dto.name,
+      email: email,
+      name: name,
       password: hashedPassword,
-      role: dto.role || UserRole.CUSTOMER,
+      role: role || UserRole.CUSTOMER,
     });
 
     await this.userRepository.save(user);

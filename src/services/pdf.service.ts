@@ -6,7 +6,6 @@ import { Order } from '../entities/order.entity';
 
 export interface GeneratePdfResult {
   filePath: string;
-  buffer: Buffer;
 }
 
 @Injectable()
@@ -24,7 +23,7 @@ export class PdfService {
     order: Order,
     receiptId: string,
   ): Promise<GeneratePdfResult> {
-    const uploadsDir = path.join(process.cwd(), 'uploads', 'receipts');
+    const uploadsDir = path.join(process.cwd(), 'uploads');
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
@@ -49,7 +48,7 @@ export class PdfService {
       writeStream.on('finish', () => {
         const buffer = Buffer.concat(buffers);
         this.logger.log(`PDF generated: ${filePath}`);
-        resolve({ filePath, buffer });
+        resolve({ filePath });
       });
       writeStream.on('error', reject);
     });

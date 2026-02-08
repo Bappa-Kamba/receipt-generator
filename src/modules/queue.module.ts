@@ -20,6 +20,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     BullModule.registerQueue({
       name: 'receipt-generation',
     }),
+    BullModule.registerQueue({
+      name: 'receipt-email',
+    }),
   ],
   exports: [BullModule],
 })

@@ -20,6 +20,7 @@ import {
   OrderService,
 } from '../services';
 import { ReceiptProcessor } from '../processors/receipt.processor';
+import { EmailProcessor } from '../processors/email.processor';
 import { QueueModule } from './queue.module';
 
 @Module({
@@ -36,6 +37,7 @@ import { QueueModule } from './queue.module';
     ReceiptService,
     OrderService,
     ReceiptProcessor,
+    EmailProcessor,
   ],
 })
 export class ReceiptModule {}

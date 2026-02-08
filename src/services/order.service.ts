@@ -11,7 +11,6 @@ import { Customer } from '../entities/customer.entity';
 import { OrderItem } from '../entities/order-item.entity';
 import { User, UserRole } from '../entities/user.entity';
 import { ReceiptDto, CreateOrderDto, OrderResponseDto } from '../dtos';
-import { StorageService } from './storage.service';
 import { format } from 'date-fns';
 import { ReceiptService } from './receipt.service';
 
@@ -26,19 +25,29 @@ export class OrderService {
     private customerRepository: Repository<Customer>,
     @InjectRepository(OrderItem)
     private orderItemRepository: Repository<OrderItem>,
-    private storageService: StorageService,
     private receiptService: ReceiptService,
   ) {}
 
-  async createOrder(dto: CreateOrderDto): Promise<OrderResponseDto> {
+  async createOrder(orderDto: CreateOrderDto): Promise<OrderResponseDto> {
+    const {
+      customerEmail,
+      customerName,
+      subtotal,
+      total,
+      tax,
+      discount,
+      items,
+      paymentMethod
+    } = orderDto;
+
     let customer = await this.customerRepository.findOne({
-      where: { email: dto.customerEmail },
+      where: { email: customerEmail },
     });
 
     if (!customer) {
       customer = this.customerRepository.create({
-        email: dto.customerEmail,
-        name: dto.customerName,
+        email: customerEmail,
+        name: customerName,
       });
       await this.customerRepository.save(customer);
     }
@@ -47,18 +56,18 @@ export class OrderService {
     const order = this.orderRepository.create({
       orderId,
       customer,
-      subtotal: dto.subtotal,
-      tax: dto.tax,
-      discount: dto.discount || 0,
-      total: dto.total,
-      paymentMethod: dto.paymentMethod,
+      subtotal: subtotal,
+      tax: tax,
+      discount: discount || 0,
+      total: total,
+      paymentMethod: paymentMethod,
       status: OrderStatus.CONFIRMED,
       orderDate: new Date(),
     });
 
     const savedOrder = await this.orderRepository.save(order);
 
-    const orderItems = dto.items.map((item) =>
+    const orderItems = items.map((item) =>
       this.orderItemRepository.create({
         order: savedOrder,
         productName: item.productName,

@@ -8,7 +8,7 @@ export interface SendReceiptEmailParams {
   orderId: string;
   receiptId: string;
   total: number;
-  pdfBuffer: Buffer;
+  url?: string;
 }
 
 @Injectable()
@@ -39,7 +39,7 @@ export class EmailService {
   }
 
   async sendReceiptEmail(params: SendReceiptEmailParams): Promise<void> {
-    const { to, customerName, orderId, receiptId, total, pdfBuffer } = params;
+    const { to, customerName, orderId, receiptId, total, url } = params;
 
     try {
       await this.transporter.sendMail({
@@ -51,13 +51,8 @@ export class EmailService {
           orderId,
           receiptId,
           total,
+          url,
         ),
-        attachments: [
-          {
-            filename: `receipt-${receiptId}.pdf`,
-            content: pdfBuffer,
-          },
-        ],
       });
 
       this.logger.log(`Receipt email sent to ${to} for order ${orderId}`);
@@ -79,6 +74,7 @@ export class EmailService {
     orderId: string,
     receiptId: string,
     total: number,
+    url?: string,
   ): string {
     return `
       <!DOCTYPE html>
@@ -105,9 +101,10 @@ export class EmailService {
                 <h3>Order Summary</h3>
                 <p><strong>Order ID:</strong> ${orderId}</p>
                 <p><strong>Receipt ID:</strong> ${receiptId}</p>
-                <p><strong>Total Amount:</strong> $${this.formatCurrency(total)}</p>
+                <p><strong>Total Amount:</strong> N${this.formatCurrency(total)}</p>
               </div>
-              <p>Please find your receipt attached to this email.</p>
+              <p>Click <a href="${url}" style="color: #4CAF50; text-decoration: none; font-weight: bold;">here</a> to view your receipt.</p>
+              <p>If link fails, copy and paste this into your browser:\n${url}</p>
               <p>If you have any questions, please don't hesitate to contact us at support@kamtechstore.com</p>
             </div>
             <div class="footer">
