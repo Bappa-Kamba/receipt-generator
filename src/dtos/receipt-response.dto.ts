@@ -18,7 +18,7 @@ export class ReceiptResponseDto {
     example: 'receipt/RCP-20260208-212121',
     nullable: true,
   })
-  storageKey: string | null;
+  storageUrl: string | null;
 
   @ApiProperty({
     description: 'Timestamp when email was sent',

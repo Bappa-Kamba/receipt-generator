@@ -79,16 +79,16 @@ export class ReceiptService {
   }
 
   async mapToDto(receipt: Receipt): Promise<ReceiptDto> {
-    let storageKey = receipt.storageKey;
+    let storageUrl: string = "";
 
-    if (storageKey) {
-      storageKey = await this.storageService.generateSignedUrl(storageKey);
+    if (receipt.storageKey) {
+      storageUrl = await this.storageService.generateSignedUrl(receipt.storageKey);
     }
 
     return {
       receiptId: receipt.receiptId,
       orderId: receipt.order?.orderId || '',
-      storageKey,
+      storageUrl,
       emailSentAt: receipt.emailSentAt,
       generatedAt: receipt.generatedAt,
     };
