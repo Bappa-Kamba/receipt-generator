@@ -7,8 +7,8 @@ A production-ready NestJS application for automated receipt generation and deliv
 **ArchSaint-Nexus** is an enterprise-grade receipt generation system built with NestJS, TypeORM, and PostgreSQL. It provides a complete solution for e-commerce platforms to automatically generate, store, and deliver receipts to customers.
 
 ### Deployed Link
-Deployed on render [here](https://receipt-generator-f57d.onrender.com).
-To view the API documentation, visit [Swagger](https://receipt-generator-f57d.onrender.com/api/v1/docs).
+Deployed on render [here](https://receipt-generator-f57d.onrender.com/api/v1/).
+To view the API documentation, visit the [Swagger UI](https://receipt-generator-f57d.onrender.com/api/v1/docs).
 
 ### Key Features
 
