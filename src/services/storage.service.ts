@@ -39,7 +39,9 @@ export class StorageService {
 
   async uploadPdf(filePath: string, key: string): Promise<UploadResult> {
     const fileContent = readFileSync(filePath);
-    const s3Key = `receipts/${key}.pdf`;
+    const s3Key = key.startsWith('receipts/') && key.endsWith('.pdf')
+      ? key
+      : `receipts/${key}.pdf`;
 
     const command = new PutObjectCommand({
       Bucket: this.bucket,
