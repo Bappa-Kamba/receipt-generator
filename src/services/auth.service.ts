@@ -2,7 +2,6 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
-  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,6 +9,9 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User, UserRole } from '../entities/user.entity';
 import { RegisterDto, LoginDto, AuthResponseDto } from '../dtos';
+import type { Queue } from 'bull';
+import { InjectQueue } from '@nestjs/bull';
+import { ensureJob } from '../common/utils.queue';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +19,8 @@ export class AuthService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private jwtService: JwtService,
+    @InjectQueue('send-email')
+    private emailQueue: Queue,
   ) {}
 
   async register(authDto: RegisterDto): Promise<AuthResponseDto> {
@@ -39,6 +43,18 @@ export class AuthService {
     });
 
     await this.userRepository.save(user);
+
+    const job = await ensureJob(
+      this.emailQueue,
+      'send-welcome-email',
+      `welcome-email:${user.id}`,
+      { userId: user.id, name: user.name, email: user.email },
+      {
+        attempts: 5,
+        backoff: { type: 'exponential', delay: 10_000 },
+        removeOnComplete: true,
+      },
+    );
 
     return this.generateAuthResponse(user);
   }

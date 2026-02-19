@@ -18,7 +18,7 @@ export class WebhookService {
   constructor(
     @InjectQueue('receipt-generation')
     private receiptQueue: Queue,
-    @InjectQueue('receipt-email')
+    @InjectQueue('send-email')
     private emailQueue: Queue,
     private dataSource: DataSource,
   ) {}
@@ -56,8 +56,13 @@ export class WebhookService {
       });
 
       if (existingReceipt) {
-        if (existingReceipt.emailSentAt || existingReceipt.status === ReceiptStatus.EMAIL_SENT) {
-          this.logger.log('Recipt already sent already, nothing to process further');
+        if (
+          existingReceipt.emailSentAt ||
+          existingReceipt.status === ReceiptStatus.EMAIL_SENT
+        ) {
+          this.logger.log(
+            'Receipt already sent already, nothing to process further',
+          );
           return {
             message: 'Receipt already generated and sent',
             receiptId: existingReceipt.receiptId,
@@ -68,14 +73,20 @@ export class WebhookService {
         // Not done: resume pipeline
         if (existingReceipt.storageKey) {
           // PDF uploaded, email pending/failed
-          this.logger.warn('Receipt found: PDF uploaded, email not sent. Attempting to send email again');
+          this.logger.warn(
+            'Receipt found: PDF uploaded, email not sent. Attempting to send email again',
+          );
 
           const job = await ensureJob(
             this.emailQueue,
             'send-receipt-email',
             `receipt-email:${existingReceipt.receiptId}`,
             { receiptId: existingReceipt.receiptId, orderId },
-            { attempts: 5, backoff: { type: 'exponential', delay: 10_000 }, removeOnComplete: true },
+            {
+              attempts: 5,
+              backoff: { type: 'exponential', delay: 10_000 },
+              removeOnComplete: true,
+            },
           );
 
           return {
@@ -86,7 +97,9 @@ export class WebhookService {
         }
 
         // Receipt exists but no PDF stored yet (resume generation)
-        this.logger.warn('Receipt found: not uploaded yet. Attempting upload again');
+        this.logger.warn(
+          'Receipt found: not uploaded yet. Attempting upload again',
+        );
         const job = await ensureJob(
           this.receiptQueue,
           'generate-receipt',
@@ -96,10 +109,11 @@ export class WebhookService {
             attempts: 5,
             backoff: {
               type: 'exponential',
-              delay: 5000
+              delay: 5000,
             },
-            removeOnComplete: true
-          });
+            removeOnComplete: true,
+          },
+        );
 
         return {
           message: 'Receipt exists; generation queued',
@@ -117,10 +131,11 @@ export class WebhookService {
           attempts: 5,
           backoff: {
             type: 'exponential',
-            delay: 5000
+            delay: 5000,
           },
-          removeOnComplete: true
-        });
+          removeOnComplete: true,
+        },
+      );
 
       return {
         message: 'Receipt generation queued',

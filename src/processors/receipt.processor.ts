@@ -25,7 +25,7 @@ export class ReceiptProcessor {
     private orderRepository: Repository<Order>,
     @InjectRepository(Receipt)
     private receiptRepository: Repository<Receipt>,
-    @InjectQueue('receipt-email')
+    @InjectQueue('send-email')
     private emailQueue: Queue,
     private pdfService: PdfService,
     private storageService: StorageService,
@@ -44,7 +44,9 @@ export class ReceiptProcessor {
     });
     if (!order) throw new NotFoundException(`Order ${orderId} not found`);
 
-    let receipt = await this.receiptRepository.findOne({ where: { orderId: order.id } });
+    let receipt = await this.receiptRepository.findOne({
+      where: { orderId: order.id },
+    });
 
     if (!receipt) {
       const receiptId = this.generateReceiptId();
@@ -58,19 +60,26 @@ export class ReceiptProcessor {
         receipt = await this.receiptRepository.save(receipt);
         this.logger.log(`Receipt record created: ${receipt.receiptId}`);
       } catch (e: any) {
-        receipt = await this.receiptRepository.findOne({ where: { orderId: order.id } });
+        receipt = await this.receiptRepository.findOne({
+          where: { orderId: order.id },
+        });
         if (!receipt) throw e;
       }
     }
 
     if (receipt.emailSentAt) {
-      this.logger.log(`Receipt ${receipt.receiptId} already completed (email sent). Skipping.`);
+      this.logger.log(
+        `Receipt ${receipt.receiptId} already completed (email sent). Skipping.`,
+      );
       return { success: true, receiptId: receipt.receiptId, skipped: true };
     }
 
     try {
       if (!receipt.storageKey) {
-        const { filePath } = await this.pdfService.generateReceiptPdf(order, receipt.receiptId);
+        const { filePath } = await this.pdfService.generateReceiptPdf(
+          order,
+          receipt.receiptId,
+        );
         pdfPath = filePath;
 
         const objectKey = `receipts/${receipt.receiptId}.pdf`;
@@ -93,10 +102,11 @@ export class ReceiptProcessor {
           attempts: 3,
           backoff: {
             type: 'exponential',
-            delay: 10000
+            delay: 10000,
           },
-          removeOnComplete: true
-        });
+          removeOnComplete: true,
+        },
+      );
 
       this.logger.log(`Queued email job for receipt ${receipt.receiptId}`);
 

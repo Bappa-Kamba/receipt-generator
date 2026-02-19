@@ -7,6 +7,7 @@ import { User } from '../entities/user.entity';
 import { AuthService } from '../services/auth.service';
 import { AuthController } from '../controllers/auth.controller';
 import { JwtStrategy } from '../auth/strategies/jwt.strategy';
+import { QueueModule } from './queue.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { JwtStrategy } from '../auth/strategies/jwt.strategy';
       },
       inject: [ConfigService],
     }),
+    QueueModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

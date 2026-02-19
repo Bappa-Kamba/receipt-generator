@@ -7,13 +7,15 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        redis: configService.get('redis.url') ? {
-          url: configService.get('redis.url'),
-        } : {
-          host: configService.get('redis.host'),
-          port: configService.get('redis.port'),
-          password: configService.get('redis.password'),
-        },
+        redis: configService.get('redis.url')
+          ? {
+              url: configService.get('redis.url'),
+            }
+          : {
+              host: configService.get('redis.host'),
+              port: configService.get('redis.port'),
+              password: configService.get('redis.password'),
+            },
       }),
       inject: [ConfigService],
     }),
@@ -21,7 +23,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       name: 'receipt-generation',
     }),
     BullModule.registerQueue({
-      name: 'receipt-email',
+      name: 'send-email',
     }),
   ],
   exports: [BullModule],

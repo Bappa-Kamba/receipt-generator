@@ -12,7 +12,7 @@ interface EmailJobData {
   orderId: string;
 }
 
-@Processor('receipt-email')
+@Processor('send-email')
 export class EmailProcessor {
   private readonly logger = new Logger(EmailProcessor.name);
 
@@ -28,9 +28,11 @@ export class EmailProcessor {
   @Process('send-receipt-email')
   async handleReceiptEmail(job: Job<EmailJobData>) {
     const { receiptId, orderId } = job.data;
-    this.logger.log(`Processing receipt email for receipt ${receiptId}, order ${orderId}`);
+    this.logger.log(
+      `Processing receipt email for receipt ${receiptId}, order ${orderId}`,
+    );
 
-    const receipt = await this.receiptRepository.findOne({ 
+    const receipt = await this.receiptRepository.findOne({
       where: { receiptId },
       relations: ['order'],
     });
@@ -55,7 +57,9 @@ export class EmailProcessor {
     }
 
     try {
-      const url = await this.storageService.generateSignedUrl(receipt.storageKey);
+      const url = await this.storageService.generateSignedUrl(
+        receipt.storageKey,
+      );
       this.logger.log(`Generated signed URL for receipt ${receiptId}`);
 
       await this.emailService.sendReceiptEmail({
@@ -77,7 +81,31 @@ export class EmailProcessor {
       receipt.status = ReceiptStatus.FAILED;
       receipt.lastError = err?.message ?? String(err);
       await this.receiptRepository.save(receipt);
-      this.logger.error(`Failed to send receipt email for ${receiptId}: ${err.message}`);
+      this.logger.error(
+        `Failed to send receipt email for ${receiptId}: ${err.message}`,
+      );
+      throw err;
+    }
+  }
+
+  @Process('send-welcome-email')
+  async handleWelcomeEmail(
+    job: Job<{ userId: string; email: string; name: string }>,
+  ) {
+    const { userId, email, name } = job.data;
+    this.logger.log(`Processing welcome email for user ${userId}`);
+
+    try {
+      await this.emailService.sendWelcomeEmail({
+        toEmail: email,
+        name,
+      });
+      this.logger.log(`Welcome email sent to ${email}`);
+      return { success: true, userId };
+    } catch (err: any) {
+      this.logger.error(
+        `Failed to send welcome email to ${email}: ${err.message}`,
+      );
       throw err;
     }
   }

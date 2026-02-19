@@ -12,6 +12,11 @@ export interface SendReceiptEmailParams {
   url?: string;
 }
 
+export interface SendWelcomeEmailParams {
+  toEmail: string;
+  name: string;
+}
+
 
 type EmailProvider = 'resend' | 'nodemailer';
 
@@ -21,7 +26,7 @@ export class EmailService {
 
   private provider: EmailProvider;
   private transporter: nodemailer.Transporter;
-  private resend: Resend
+  private resend: Resend;
 
   private fromEmail: string;
   private fromName: string;
@@ -71,12 +76,12 @@ export class EmailService {
   async sendReceiptEmail(params: SendReceiptEmailParams): Promise<void> {
     const { to, customerName, orderId, receiptId, total, url } = params;
     const emailBody = this.generateEmailTemplate(
-          customerName,
-          orderId,
-          receiptId,
-          total,
-          url,
-        )
+      customerName,
+      orderId,
+      receiptId,
+      total,
+      url,
+    );
 
     try {
       if (this.provider === 'resend') {
@@ -89,11 +94,14 @@ export class EmailService {
           html: emailBody,
         });
 
-        this.logger.log(`[Resend] Receipt email sent to ${to} for order ${orderId}`);
+        this.logger.log(
+          `[Resend] Receipt email sent to ${to} for order ${orderId}`,
+        );
         return;
       }
-      
-      if (!this.transporter) throw new Error('Nodemailer transporter not initialized');
+
+      if (!this.transporter)
+        throw new Error('Nodemailer transporter not initialized');
 
       await this.transporter.sendMail({
         from: `${this.fromName} <${this.fromEmail}>`,
@@ -102,9 +110,47 @@ export class EmailService {
         html: emailBody,
       });
 
-      this.logger.log(`[Nodemailer] Receipt email sent to ${to} for order ${orderId}`);
+      this.logger.log(
+        `[Nodemailer] Receipt email sent to ${to} for order ${orderId}`,
+      );
     } catch (error) {
       this.logger.error(`Failed to send receipt email to ${to}`, error);
+      throw error;
+    }
+  }
+
+  async sendWelcomeEmail(params: SendWelcomeEmailParams): Promise<void> {
+    const { toEmail, name } = params;
+    const emailBody = this.generateWelcomeEmailTemplate(name, toEmail);
+
+    try {
+      if (this.provider === 'resend') {
+        if (!this.resend) throw new Error('Resend client not initialized');
+
+        await this.resend.emails.send({
+          from: `${this.fromName} <${this.fromEmail}>`,
+          to: [toEmail],
+          subject: `Welcome to KamTech Store, ${name}!`,
+          html: emailBody,
+        });
+
+        this.logger.log(`[Resend] Welcome email sent to ${toEmail}`);
+        return;
+      }
+
+      if (!this.transporter)
+        throw new Error('Nodemailer transporter not initialized');
+
+      await this.transporter.sendMail({
+        from: `${this.fromName} <${this.fromEmail}>`,
+        to: toEmail,
+        subject: `Welcome to KamTech Store, ${name}!`,
+        html: emailBody,
+      });
+
+      this.logger.log(`[Nodemailer] Welcome email sent to ${toEmail}`);
+    } catch (error) {
+      this.logger.error(`Failed to send welcome email to ${toEmail}`, error);
       throw error;
     }
   }
@@ -152,6 +198,46 @@ export class EmailService {
               </div>
               <p>Click <a href="${url}" style="color: #4CAF50; text-decoration: none; font-weight: bold;">here</a> to view your receipt.</p>
               <p>If link fails, copy and paste this into your browser:\n${url}</p>
+              <p>If you have any questions, please don't hesitate to contact us at support@kamtechstore.com</p>
+            </div>
+            <div class="footer">
+              <p>KamTech Store</p>
+              <p>123 Commerce Street, Tech City, TC 12345</p>
+              <p>Phone: +234-12-3456-7890</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  private generateWelcomeEmailTemplate(name: string, email: string): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background-color: #f9f9f9; }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+            .order-details { background-color: white; padding: 15px; margin: 15px 0; border-radius: 5px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Welcome to KamTech Store!</h1>
+            </div>
+            <div class="content">
+              <p>Dear ${name},</p>
+              <p>Thank you for joining KamTech Store. We're excited to have you as a customer!</p>
+              <div class="order-details">
+                <h3>Account Information</h3>
+                <p><strong>Name:</strong> ${name}</p>
+                <p><strong>Email:</strong> ${email}</p>
+              </div>
               <p>If you have any questions, please don't hesitate to contact us at support@kamtechstore.com</p>
             </div>
             <div class="footer">
